@@ -10,7 +10,7 @@
 #include <chrono>
 #include <unordered_set>
 
-#define TYPE "INT"
+#define TYPE "INT" // set as parameters?
 using namespace std;
 using namespace std::chrono;
 
@@ -315,6 +315,8 @@ void printClusters(vector<unordered_set<array<int, 2>, container_hasher>> &clust
 // used only in raster' version
 void printAllPointsClustered(vector<unordered_set<array<int, 2>, container_hasher>> &clusters, unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points){
     cout.precision(15);
+    ofstream outfile("clustered.csv");
+
     int count_tiles = 0;
     int count_points = 0;
 
@@ -329,9 +331,12 @@ void printAllPointsClustered(vector<unordered_set<array<int, 2>, container_hashe
             if (it_map_all_points != all_points.end()) {
                 it_set_all_points = (it_map_all_points -> second).begin(); // pointer to the first element in the list of points associated to the founded tile
                 for (int i = 0; i < (it_map_all_points -> second).size(); i++) {
-                    cout << (*it_set_all_points)[0] << ",";
-                    cout << (*it_set_all_points)[1] << ",";
-                    cout << j <<endl;
+                    outfile << (*it_set_all_points)[0] << ",";
+                    outfile << (*it_set_all_points)[1] << ",";
+                    outfile << j + 1 <<endl;
+                    //cout << (*it_set_all_points)[0] << ",";
+                    //cout << (*it_set_all_points)[1] << ",";
+                    //cout << j <<endl;
                     it_set_all_points++;
                     count_points++;
                 }
@@ -340,6 +345,7 @@ void printAllPointsClustered(vector<unordered_set<array<int, 2>, container_hashe
             count_tiles++;
         }
     }
+    outfile.close();
     cout << "Clusters: " << clusters.size() << endl;
     cout << "Tiles clustered: " << count_tiles << endl;
     cout << "Points clustered: " << count_points << endl;
