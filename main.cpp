@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <sstream>
 #include <cmath>
 #include <map>
 #include <cstring>
@@ -10,7 +9,7 @@
 #include <chrono>
 #include <unordered_set>
 
-#define TYPE "INT" // set as parameters?
+#define TYPE "DOUBLE" // set as parameters?
 using namespace std;
 using namespace std::chrono;
 
@@ -44,9 +43,9 @@ int main() {
     int row, column;
 
     // parameters of algorithm
-    double precision = 4.5;
+    double precision = 4.2;
     int threshold = 2;
-    int min_size = 2;
+    int min_size = 3;
     string name_file = "../s1.csv";//"/home/antonio/Scrivania/Datasets/data_10_shuffled2.csv";
 
     // dataset dimension
@@ -143,6 +142,7 @@ void loadData(double** m, string name_file) {
 // raster'
 void mapToTilesPrime(double **m, double precision, int threshold, int n, unordered_map<array<int, 2>, int, container_hasher> &projection, unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points) {
     double scalar;
+    int count= 0;
     unordered_map<array<int, 2>, int, container_hasher>::iterator it;
     unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher>::iterator it_map_all_points;
     unordered_set<array<double , 2>, container_hasher>::iterator it_set_all_points;
@@ -175,7 +175,6 @@ void mapToTilesPrime(double **m, double precision, int threshold, int n, unorder
 
 
     }
-
     cout << "projection before threshold: " << projection.size() << endl;
 
     // remove tile with count < threshold
@@ -248,7 +247,7 @@ void getNeighbors(array<int, 2> coordinate, unordered_map<array<int, 2>, int, co
 
 void clusteringTiles(unordered_map<array<int, 2>, int, container_hasher> &projection, int min_size, vector<unordered_set<array<int, 2>, container_hasher>> &clusters) {
     unordered_map<array<int, 2>, int, container_hasher>::iterator iterator;
-    unordered_set<array<int, 2>, container_hasher>::iterator iterator_set;
+
     // read all tiles
     while ((iterator = projection.begin()) != projection.end()) {
         // read and remove first element recursively
@@ -263,7 +262,7 @@ void clusteringTiles(unordered_map<array<int, 2>, int, container_hasher> &projec
         getNeighbors(x,projection, to_check);
 
         // for each neighbor, try to find respectively neighbor in order to add they to single cluster
-        while (!(to_check.size() == 0)) {
+        while (!to_check.empty()) {
             array<int, 2> value = *to_check.begin() ;
             to_check.erase((to_check.begin()));
             visited.insert(value);
@@ -271,7 +270,7 @@ void clusteringTiles(unordered_map<array<int, 2>, int, container_hasher> &projec
             unordered_set<array<int, 2>, container_hasher> temp;
 
             getNeighbors(value,projection, temp);
-            while (!(temp.size() == 0)) {
+            while (!temp.empty()) {
                 to_check.insert(*temp.begin());
                 temp.erase((temp.begin()));
             }
@@ -316,16 +315,15 @@ void printClusters(vector<unordered_set<array<int, 2>, container_hasher>> &clust
 void printAllPointsClustered(vector<unordered_set<array<int, 2>, container_hasher>> &clusters, unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points){
     cout.precision(15);
     ofstream outfile("clustered.csv");
-
+    int temp = 0;
     int count_tiles = 0;
     int count_points = 0;
-
     unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher>::iterator it_map_all_points;
     unordered_set<array<double , 2>, container_hasher>::iterator it_set_all_points;
     unordered_set<array<int, 2>, container_hasher>::iterator it;
     for (int j = 0; j < clusters.size(); j++) {
         //cout << "Cluster n° " << j << " with size " << cluster.at(j).size() << ": " << endl;
-        it = clusters.at(j).begin(); // pointer to start of j-th cluster (cluster = list of tiles)
+        it = clusters.at(j).begin(); // pointer to start of j-th cluster in clusters (cluster = list of tiles, clusters = list of cluster)
         for (int i = 0; i < clusters.at(j).size(); i++) {
             it_map_all_points = all_points.find((*it)); // try to find in all_points the tile (with its list of points) from cluster
             if (it_map_all_points != all_points.end()) {
@@ -340,15 +338,35 @@ void printAllPointsClustered(vector<unordered_set<array<int, 2>, container_hashe
                     it_set_all_points++;
                     count_points++;
                 }
+                all_points.erase(it_map_all_points++);
             }
             it++;
             count_tiles++;
         }
     }
+    it_map_all_points = all_points.begin(); // first tile remaining in all_points
+    for (int i = 0; i < all_points.size(); i++) {
+        if (it_map_all_points != all_points.end()) {
+            it_set_all_points = (it_map_all_points -> second).begin(); // pointer to the first element in the list of points associated to the founded tile
+            for (int i = 0; i < (it_map_all_points -> second).size(); i++) {
+                outfile << (*it_set_all_points)[0] << ",";
+                outfile << (*it_set_all_points)[1] << ",";
+                outfile << 0 <<endl;
+                it_set_all_points++;
+                //count_points++;
+                temp++;
+            }
+            //all_points.erase(it_map_all_points++);
+            it_map_all_points++;
+        }
+    }
     outfile.close();
-    cout << "Clusters: " << clusters.size() << endl;
+    cout << "temp: " << temp << endl;
+    cout << "Tile not clustered: " << all_points.size() << endl;
     cout << "Tiles clustered: " << count_tiles << endl;
+    cout << "Clusters: " << clusters.size() << endl;
     cout << "Points clustered: " << count_points << endl;
+    cout << "Points anallized: " << count_points + temp << endl;
 }
 
 void printMatrix(double **matrix, int n, int m) {
