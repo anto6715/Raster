@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <unordered_set>
+#include <math.h>
 
 #define TYPE "INT" // set as parameters?
 using namespace std;
@@ -44,9 +45,9 @@ int main() {
     int row, column;
 
     // parameters of algorithm
-    double precision = 4.2;
-    int threshold = 2;
-    int min_size = 3;
+    double precision = 3+log2(3);
+    int threshold = 35;
+    int min_size = 2;
     string name_file = "../s1.csv";//"/home/antonio/Scrivania/Datasets/data_10_shuffled2.csv";
 
     // dataset dimension
@@ -141,7 +142,12 @@ void loadData(double** m, string name_file) {
 }
 
 // raster'
-void mapToTilesPrime(double **m, double precision, int threshold, int n, unordered_map<array<int, 2>, int, container_hasher> &projection, unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points) {
+void mapToTilesPrime(   double **m,
+                        double precision,
+                        int threshold,
+                        int n,
+                        unordered_map<array<int, 2>, int, container_hasher> &projection,
+                        unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points) {
     double scalar;
     int count= 0;
     unordered_map<array<int, 2>, int, container_hasher>::iterator it;
@@ -313,7 +319,8 @@ void printClusters(vector<unordered_set<array<int, 2>, container_hasher>> &clust
 } // semi-unordered
 
 // used only in raster' version
-void printAllPointsClustered(vector<unordered_set<array<int, 2>, container_hasher>> &clusters, unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points){
+void printAllPointsClustered(   vector<unordered_set<array<int, 2>, container_hasher>> &clusters,
+                                unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points){
     cout.precision(15);
     ofstream outfile("clustered.csv");
     int count_not_clustered = 0;
@@ -375,16 +382,30 @@ void printAllPointsClustered(vector<unordered_set<array<int, 2>, container_hashe
     cout << "Points anallized: " << count_points + count_not_clustered << endl;
 }
 
-void clusterDensity(vector<unordered_set<array<int, 2>, container_hasher>> &clusters, unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points,
+void clusterDensity(vector<unordered_set<array<int, 2>, container_hasher>> &clusters,
+                    unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher> &all_points,
                     double precision) {
-    int temp = 0;
-    int* size_cluster = new int[clusters.size() * sizeof(int)];
-    int count_tiles = 0;
+
     double scalar = pow(10, precision);
-    double area = scalar* scalar;
+    double area = scalar * scalar;
+    double* shannon = new double[clusters.size()];
+    double* density = new double[clusters.size()];
+    double* size_cluster = new double[clusters.size() * sizeof(double)];
+    double** tile_points = new double*[clusters.size()];
+    double pji;
     unordered_map<array<int, 2>, unordered_set<array<double , 2>, container_hasher>, container_hasher>::iterator it_map_all_points;
     unordered_set<array<double , 2>, container_hasher>::iterator it_set_all_points;
     unordered_set<array<int, 2>, container_hasher>::iterator it_tiles;
+
+
+    // allocating vectors that will contain n° of points for each tile i of respective cluster j
+    for (int j = 0; j < clusters.size(); j++) {
+        //cout << "Cluster n° " << j << " with size " << clusters.at(j).size() << ": " << endl;
+        tile_points[j] = new double[clusters.at(j).size()];
+        if (!tile_points[j]) {
+            cout << "error at: " << j << endl;
+        }
+    }
 
     /************ for each cluster in clusters ************/
     for (int j = 0; j < clusters.size(); j++) {
@@ -394,15 +415,42 @@ void clusterDensity(vector<unordered_set<array<int, 2>, container_hasher>> &clus
         for (int i = 0; i < clusters.at(j).size(); i++) {  // clusters.at(j).size() represent the number of tiles contained in cluster j-th
             it_map_all_points = all_points.find((*it_tiles)); // try to find in all_points the tile (with its list of points) from cluster
             size_cluster[j] += (it_map_all_points -> second).size();
+            tile_points[j][i] = (it_map_all_points -> second).size();
             it_tiles++;
         }
     }
 
-
-    for (int i = 0; i < clusters.size(); i++) {
-        temp += size_cluster[i];
-        cout << "Density of clsuter " << i << ": " << size_cluster[i]/(clusters.at(i).size()) << " elementi/tile" << endl;
+    /************ for each cluster in clusters ************/
+    for (int j = 0; j < clusters.size(); j++) {
+        /************ for each tile in cluster j-th ************/
+        for (int i = 0; i < clusters.at(j).size(); i++) {  // clusters.at(j).size() represent the number of tiles contained in cluster j-th
+            pji = tile_points[j][i]/size_cluster[j];
+            shannon[j] += -(pji * log2(pji));
+        }
+        //cout << "Shannon of cluster " << j << ": " << shannon[j] << endl;
     }
+
+    // calculating density for each cluster
+    /************ for each cluster in clusters ************/
+    for (int j = 0; j < clusters.size(); j++) {
+        density[j] = size_cluster[j]/(clusters.at(j).size());
+        //cout << "Density of cluster " << j << ": " << density[j] << endl;
+    }
+
+    double mean_shannon = 0;
+    double mean_density = 0;
+    for (int j = 0; j < clusters.size(); j++) {
+        mean_shannon += shannon[j];
+        mean_density += density[j];
+    }
+    for (int j = 0; j < clusters.size(); j++) {
+        cout << "Cluster n° " << j << " with n° of points: " << size_cluster[j] << endl;
+    }
+    mean_shannon = mean_shannon/clusters.size();
+    mean_density = mean_density/clusters.size();
+
+    cout << "Shannon mean: " << mean_shannon << endl;
+    cout << "Density mean: " << mean_density << endl;
 }
 void printMatrix(double **matrix, int n, int m) {
     cout.precision(17);
