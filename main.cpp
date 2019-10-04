@@ -45,10 +45,14 @@ int main() {
     int row, column;
 
     // parameters of algorithm
-    double precision = 3+log2(3);
-    int threshold = 35;
-    int min_size = 2;
-    string name_file = "../s1.csv";//"/home/antonio/Scrivania/Datasets/data_10_shuffled2.csv";
+    //double precision = 3+log2(3);
+    //int threshold = 3;
+    //int min_size = 2;
+    // parameters of algorithm
+    double precision =4.3;
+    int threshold = 5;
+    int min_size = 5;
+    string name_file = "/home/antonio/Scrivania/Datasets/S-sets/s1.csv";//"/home/antonio/Scrivania/Datasets/data_10_shuffled2.csv";
 
     // dataset dimension
     column = 2;
@@ -124,7 +128,7 @@ void loadData(double** m, string name_file) {
                         m[row][i] = stod(line);
                     }
                     catch (const std::invalid_argument e) {
-                        cout << "NaN found in file " << "../0_data_generators_data_1_shuffled.csv" << " line " << row
+                        cout << "NaN found in file " << name_file << " line " << row
                              << endl;
                         e.what();
                     }
@@ -231,9 +235,24 @@ void mapToTiles(double **m, double precision, int threshold, int n, unordered_ma
 void getNeighbors(array<int, 2> coordinate, unordered_map<array<int, 2>, int, container_hasher> &projection, unordered_set<array<int, 2>, container_hasher> &result) {
     int x = coordinate[0];
     int y = coordinate[1];
+    int radius = 3;
+    int count;
     unordered_map<array<int, 2>, int, container_hasher>::iterator it;
+    unordered_set<array<int, 2>, container_hasher> neighbors;
+    unordered_set<array<int, 2>, container_hasher>::iterator it_neighbor;
     // neighboring generation of coordinate
-    array<array<int, 2>,8> neighbors;
+    //array<array<int, 2>, 16> neighbors;
+    count = 0;
+    for (int i = -radius; i <= radius ; i++) {
+        for (int j = -radius; j <= radius ; j++) {
+            if (i == 0 && j == 0)
+                continue;
+            neighbors.insert({x + i, y + j});
+            count++;
+
+        }
+    }
+    /*
     neighbors[0] = {x+1, y};
     neighbors[1] = {x-1, y};
     neighbors[2]  = {x, y+1};
@@ -241,10 +260,12 @@ void getNeighbors(array<int, 2> coordinate, unordered_map<array<int, 2>, int, co
     neighbors[4]  = {x+1, y-1};
     neighbors[5]  = {x+1, y+1};
     neighbors[6]  = {x-1, y-1};
-    neighbors[7]  = {x-1, y+1};
+    neighbors[7]  = {x-1, y+1};*/
     // if a neighbor is present in tiles, add it in result
-    for (int i = 0; i < 8; i++) {
-        it = projection.find(neighbors[i]);
+    it_neighbor = neighbors.begin();
+    for (int i = 0; i < neighbors.size(); i++) {
+        it = projection.find(*it_neighbor);
+        it_neighbor++;
         if (it != projection.end()) {
             result.insert(it -> first);
             projection.erase(it++);
@@ -357,11 +378,11 @@ void printAllPointsClustered(   vector<unordered_set<array<int, 2>, container_ha
     }
     it_map_all_points = all_points.begin(); // first tile remaining in all_points
     /************ for each tile that are not in the clusters ************/
-    for (int i = 0; i < all_points.size(); i++) {
+    /*for (int i = 0; i < all_points.size(); i++) {
         if (it_map_all_points != all_points.end()) {
             it_set_all_points = (it_map_all_points -> second).begin(); // pointer to the first element in the list of points associated to the founded tile
             /************ for each point in the tiles that are not in the clusters ************/
-            for (int i = 0; i < (it_map_all_points -> second).size(); i++) {
+            /*for (int i = 0; i < (it_map_all_points -> second).size(); i++) {
                 outfile << (*it_set_all_points)[0] << ",";
                 outfile << (*it_set_all_points)[1] << ",";
                 outfile << 0 <<endl;
@@ -372,7 +393,7 @@ void printAllPointsClustered(   vector<unordered_set<array<int, 2>, container_ha
             //all_points.erase(it_map_all_points++);
             it_map_all_points++;
         }
-    }
+    }*/
     outfile.close();
     cout << "Total points not clustered: " << count_not_clustered << endl;
     cout << "Tile not clustered: " << all_points.size() << endl;
@@ -433,7 +454,7 @@ void clusterDensity(vector<unordered_set<array<int, 2>, container_hasher>> &clus
     // calculating density for each cluster
     /************ for each cluster in clusters ************/
     for (int j = 0; j < clusters.size(); j++) {
-        density[j] = size_cluster[j]/(clusters.at(j).size());
+        density[j] = size_cluster[j]/(clusters.at(j).size() * area);
         //cout << "Density of cluster " << j << ": " << density[j] << endl;
     }
 
@@ -443,9 +464,11 @@ void clusterDensity(vector<unordered_set<array<int, 2>, container_hasher>> &clus
         mean_shannon += shannon[j];
         mean_density += density[j];
     }
-    for (int j = 0; j < clusters.size(); j++) {
+
+    /*for (int j = 0; j < clusters.size(); j++) {
         cout << "Cluster n° " << j << " with n° of points: " << size_cluster[j] << endl;
-    }
+    }*/
+
     mean_shannon = mean_shannon/clusters.size();
     mean_density = mean_density/clusters.size();
 
