@@ -95,20 +95,20 @@ int main(int argc, char **argv) {
 
     // read data from csv file
     returnValue = loadData(dataset, params.name_file, column);
-    if(!returnValue)
+    if(returnValue)
         goto ON_EXIT;
 
 
     returnValue = mapToTilesPrime(dataset, params.precision, params.threshold, row, projection, all_points);
-    if(!returnValue)
+    if(returnValue)
         goto ON_EXIT;
 
     returnValue = clusteringTiles(projection, params.threshold, clusters);
-    if(!returnValue)
+    if(returnValue)
         goto ON_EXIT;
 
     returnValue = printAllPointsClustered(clusters, all_points, params.outputFilename);
-    if(!returnValue)
+    if(returnValue)
         goto ON_EXIT;
 
     returnValue = 0;
